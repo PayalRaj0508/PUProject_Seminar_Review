@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seminar Guide Allocation Dashboard</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f4f6fb;--card:#fff;--ink:#1e2338;--muted:#6b7392;--line:#e3e7f2;
+--brand:#4f46e5;--ok:#059669;--warn:#d97706;--bad:#dc2626;--radius:14px;
+--shadow:0 2px 12px rgba(30,35,56,.08)}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+header{background:linear-gradient(120deg,#4f46e5,#7c3aed);color:#fff;padding:20px 26px}
+header h1{font-size:20px;font-weight:700}
+header p{opacity:.9;font-size:13px;margin-top:4px}
+.header-row{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.sync{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.15);
+border:1px solid rgba(255,255,255,.35);padding:8px 14px;border-radius:99px;
+font-size:12px;font-weight:700;color:#fff}
+.sync .dot{width:8px;height:8px;border-radius:50%;background:#a5b4fc;display:inline-block}
+.sync.saved .dot{background:#34d399}
+.sync.saving .dot{background:#fbbf24;animation:pulse 1s infinite}
+.sync.error .dot{background:#f87171}
+.sync.local .dot{background:#a5b4fc}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.tabs{display:flex;gap:4px;padding:0 20px;background:#fff;border-bottom:1px solid var(--line);
+position:sticky;top:0;z-index:60;overflow-x:auto}
+.tab{padding:14px 18px;cursor:pointer;font-weight:600;color:var(--muted);
+border-bottom:3px solid transparent;white-space:nowrap;background:none;
+border-top:0;border-left:0;border-right:0;font-size:14px}
+.tab:hover{color:var(--brand)}
+.tab.active{color:var(--brand);border-bottom-color:var(--brand)}
+.wrap{padding:20px 24px 60px;max-width:1900px;margin:0 auto}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;margin-bottom:18px}
+.card h2{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 small{font-weight:500;color:var(--muted);font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;border-left:4px solid var(--brand)}
+.kpi .v{font-size:26px;font-weight:800;line-height:1.1}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.4px}
+.kpi.g{border-left-color:var(--ok)}.kpi.w{border-left-color:var(--warn)}.kpi.r{border-left-color:var(--bad)}
+.bar{height:8px;background:#eef0f8;border-radius:99px;overflow:hidden;margin-top:6px}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,#4f46e5,#7c3aed);border-radius:99px}
+.bar.ok>i{background:linear-gradient(90deg,#059669,#10b981)}
+.bar.w>i{background:linear-gradient(90deg,#d97706,#f59e0b)}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;align-items:end}
+label.fl{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;
+letter-spacing:.5px;margin-bottom:5px}
+input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;
+font-size:13px;font-family:inherit;background:#fff;color:var(--ink);outline:none}
+input:focus,select:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+.btn{padding:9px 16px;border-radius:9px;border:0;background:var(--brand);color:#fff;font-weight:600;
+cursor:pointer;font-size:13px;font-family:inherit;white-space:nowrap;display:inline-flex;
+align-items:center;gap:6px;justify-content:center}
+.btn:hover{background:#4338ca}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{background:#f7f8fd}
+.btn.ok{background:var(--ok)}.btn.ok:hover{background:#047857}
+.btn.warn{background:var(--warn)}.btn.warn:hover{background:#b45309}
+.btn.bad{background:var(--bad)}.btn.bad:hover{background:#b91c1c}
+.btn.sm{padding:5px 10px;font-size:12px;border-radius:7px}
+.btn-row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.tbl-wrap{overflow:auto;border-radius:12px;border:1px solid var(--line);max-height:74vh}
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:#fff}
+thead th{position:sticky;top:0;background:#f7f8fd;z-index:5;text-align:left;padding:10px;
+font-weight:700;color:#40496b;border-bottom:1px solid var(--line);white-space:nowrap;
+font-size:11.5px;text-transform:uppercase;letter-spacing:.3px}
+tbody td{padding:9px 10px;border-bottom:1px solid #f0f2f9;vertical-align:top}
+tbody tr:hover{background:#fafbff}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.grp-start>td{border-top:2px solid #d6dbf0}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+.pill.ok{background:#d1fae5;color:#065f46}
+.pill.w{background:#fef3c7;color:#92400e}
+.pill.b{background:#e0e7ff;color:#3730a3}
+.pill.gy{background:#eef0f8;color:#4b5570}
+.mini{width:52px;padding:5px;text-align:center;font-size:12px;border-radius:6px}
+.topic{max-width:420px;font-weight:600;color:#252c47}
+.sub{color:var(--muted);font-size:11.5px}
+.link{color:var(--brand);font-weight:700;text-decoration:none}
+.guide-sel{min-width:180px;font-size:12px;padding:6px 8px}
+.empty{padding:36px;text-align:center;color:var(--muted)}
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(20,24,40,.5);z-index:200;
+align-items:flex-start;justify-content:center;padding:24px;overflow-y:auto}
+.modal-backdrop.show{display:flex}
+.modal{background:#fff;border-radius:16px;padding:22px;max-width:720px;width:100%;
+box-shadow:0 24px 60px rgba(0,0,0,.3);margin:auto}
+.modal h3{font-size:16px;margin-bottom:16px}
+.modal .fld{margin-bottom:12px}
+.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px;flex-wrap:wrap}
+.stud-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:center}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+background:#1e2338;color:#fff;padding:11px 22px;border-radius:11px;font-weight:600;
+font-size:13px;opacity:0;transition:.3s;z-index:300;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.fac-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.fac-card{border:1px solid var(--line);border-radius:12px;padding:13px;background:#fff}
+.fac-card .nm{font-weight:700;font-size:13px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.fac-card .gl{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.6}
+.hint{font-size:12px;color:var(--muted);background:#f7f8fd;border-left:3px solid var(--brand);
+padding:9px 12px;border-radius:0 8px 8px 0;margin-bottom:14px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:10px}
+.banner{padding:10px 14px;border-radius:9px;margin-bottom:14px;font-size:13px;font-weight:600}
+.banner.info{background:#e0e7ff;color:#3730a3}
+.banner.err{background:#fee2e2;color:#991b1b}
+.banner.ok{background:#d1fae5;color:#065f46}
+.banner.warn{background:#fef3c7;color:#92400e}
+#printArea{display:none}
+.rpt{padding:24px 30px;page-break-after:always;font-family:'Segoe UI',sans-serif;color:#111}
+.rpt:last-child{page-break-after:auto}
+.rpt-head{display:flex;justify-content:space-between;align-items:flex-start;
+border-bottom:3px solid #4f46e5;padding-bottom:12px;margin-bottom:16px}
+.rpt-head h1{font-size:20px;color:#4f46e5}
+.rpt-head h2{font-size:13px;font-weight:600;color:#444;margin-top:2px}
+.rpt-head p{font-size:11.5px;color:#666;margin-top:4px}
+.rpt-badge{border:2px solid #4f46e5;color:#4f46e5;border-radius:8px;padding:6px 14px;
+font-weight:800;font-size:12px;white-space:nowrap}
+.rpt-table{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:14px}
+.rpt-table th,.rpt-table td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top}
+.rpt-table th{background:#f0f1fa;font-weight:700}
+.rpt h4{font-size:12.5px;margin:14px 0 6px;color:#4f46e5;text-transform:uppercase;letter-spacing:.5px}
+.rpt .sign{display:flex;justify-content:space-between;margin-top:52px;font-size:11.5px}
+.rpt .sign div{border-top:1px solid #333;padding-top:5px;width:180px;text-align:center}
+@media print{
+  body{background:#fff}
+  .app,.toast,.modal-backdrop{display:none!important}
+  #printArea{display:block!important}
+  @page{size:A4;margin:14mm}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="header-row">
+      <div>
+        <h1>PU_PG: Seminar Guide Allocation and Review Dashboard</h1>
+        <p><b>Google Sheet Powered Created By Prof. Payal Parekh</b> · Auto-save · Press Enter in marks to move to next cell</p>
+      </div>
+      <div class="btn-row">
+        <div class="sync" id="syncBadge"><i class="dot"></i><span id="syncText">Connecting…</span></div>
+        <button class="btn ok" onclick="saveNow()">💾 Save to Sheet</button>
+        <button class="btn ghost" onclick="reloadFromSheet()">🔄 Reload</button>
+        <button class="btn ghost" onclick="resetAll()">Reset Seed</button>
+        <button class="btn bad" onclick="clearEverything()">Clear All</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="dash">📊 Dashboard</button>
+    <button class="tab" data-tab="groups">📁 Groups & Students</button>
+    <button class="tab" data-tab="alloc">🎯 Guide Allocation</button>
+    <button class="tab" data-tab="review">✅ Student Reviews</button>
+    <button class="tab" data-tab="faculty">👩‍🏫 Faculty</button>
+    <button class="tab" data-tab="reports">🏢 Company & Reports</button>
+  </nav>
+
+  <div class="wrap">
+    <div id="statusBox"></div>
+
+    <section class="panel active" id="panel-dash">
+      <div id="libWarn"></div>
+      <div class="kpis" id="kpiBox"></div>
+      <div class="card"><h2>📈 Review Progress by Faculty <small>(top 20)</small></h2><div id="facProgress"></div></div>
+      <div class="card"><h2>🗂 Domain-wise Distribution</h2><div id="domainBars"></div></div>
+    </section>
+
+    <section class="panel" id="panel-groups">
+      <div class="card">
+        <h2>🔎 Filters <span style="flex:1"></span>
+          <button class="btn" onclick="openGroupModal()">➕ Add Group</button>
+          <button class="btn ghost" onclick="resetFilters()">↺ Reset Filters</button>
+        </h2>
+        <div class="filters">
+          <div><label class="fl">Search</label><input id="fQ" placeholder="Group / student / topic…"></div>
+          <div><label class="fl">Course</label><select id="fCourse"><option value="">All</option></select></div>
+          <div><label class="fl">Semester</label><select id="fSem"><option value="">All</option></select></div>
+          <div><label class="fl">Domain</label><select id="fDomain"><option value="">All</option></select></div>
+          <div><label class="fl">Type</label><select id="fType"><option value="">All</option></select></div>
+          <div><label class="fl">Guide</label><select id="fGuide"><option value="">All</option></select></div>
+          <div><label class="fl">Review Status</label>
+            <select id="fStatus"><option value="">All</option>
+              <option value="done">Completed</option><option value="prog">Partial</option><option value="none">Not Started</option>
+            </select></div>
+          <div><label class="fl">Company</label>
+            <select id="fCompany"><option value="">All</option>
+              <option value="yes">With</option><option value="no">Without</option>
+            </select></div>
+        </div>
+        <div class="legend"><span id="filterCount"></span></div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="tbl-wrap">
+          <table><thead><tr>
+            <th>#</th><th>Group</th><th>Course</th><th>Students</th>
+            <th>Research Topic</th><th>Domain</th><th>Type</th>
+            <th>Guide</th><th>Reviews</th><th>Status</th>
+            <th>Company</th><th>Letter</th><th>Actions</th>
+          </tr></thead><tbody id="groupRows"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-alloc">
+      <div class="card">
+        <h2>⚙️ Allocation Rules</h2>
+        <div class="hint">Set max groups per faculty, then click Auto Allocate.</div>
+        <div class="filters">
+          <div><label class="fl">Default groups / faculty</label><input type="number" id="defaultCap" value="3" min="0" max="50"></div>
+          <div><label class="fl">Priority</label>
+            <select id="phdPriority"><option value="0">Balanced</option><option value="1">Ph.D. first</option></select></div>
+          <div><label class="fl">Lock existing</label>
+            <select id="lockExisting"><option value="1">Yes</option><option value="0">No</option></select></div>
+          <div class="btn-row">
+            <button class="btn" onclick="autoAllocate()">⚡ Auto Allocate</button>
+            <button class="btn ghost" onclick="applyDefaultToAll()">Apply default</button>
+            <button class="btn ghost" onclick="autoCapacity()">Balance caps</button>
+            <button class="btn bad" onclick="clearAllocation()">Clear assignments</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>👩‍🏫 Faculty Load <small id="allocSummary"></small></h2>
+        <div class="tbl-wrap" style="max-height:60vh">
+          <table><thead><tr>
+            <th>#</th><th>Faculty</th><th>Status</th><th>Max</th><th>Assigned</th>
+            <th>Remaining</th><th style="width:180px">Load</th><th>Groups</th>
+          </tr></thead><tbody id="facTable"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🗂 Faculty-wise Groups</h2>
+        <div class="filters" style="margin-bottom:14px">
+          <div><label class="fl">Faculty</label><select id="allocFacFilter"><option value="">All</option></select></div>
+          <div><label class="fl">Course</label>
+            <select id="allocCourseFilter"><option value="">All</option><option>MCA</option><option>MSc IT</option></select></div>
+          <div><label class="fl">Search</label><input id="allocSearch" placeholder="Search…"></div>
+        </div>
+        <div class="fac-grid" id="facCards"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-review">
+      <div class="card">
+        <h2>✅ Student-wise Review Marks</h2>
+        <div class="hint">
+          Type a mark and press <b>Enter</b> to jump to the next cell (down the column, wrapping to the next student).
+          <b>↑ / ↓</b> arrows also move the cursor. Every value saves to the Google Sheet automatically.
+        </div>
+        <div class="filters">
+          <div><label class="fl">Guide</label><select id="rvGuide"><option value="">All</option></select></div>
+          <div><label class="fl">Status</label>
+            <select id="rvStatus"><option value="">All</option>
+              <option value="done">Completed</option><option value="prog">Partial</option><option value="none">Not Started</option>
+            </select></div>
+          <div><label class="fl">Search</label><input id="rvSearch" placeholder="Search…"></div>
+          <div class="btn-row">
+            <button class="btn ghost" onclick="fillAllSix()">Fill 6 with 8</button>
+            <button class="btn ok" onclick="saveNow()">💾 Save to Sheet</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="tbl-wrap">
+          <table><thead><tr>
+            <th>#</th><th>Group</th><th>Topic</th><th>Guide</th><th>Student</th>
+            <th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th><th>R6</th>
+            <th>Total</th><th>Status</th><th>PDF</th>
+          </tr></thead><tbody id="reviewRows"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-faculty">
+      <div class="card">
+        <h2>👩‍🏫 Faculty Master <span style="flex:1"></span>
+          <button class="btn" onclick="openFacultyModal()">➕ Add Faculty</button>
+        </h2>
+        <div class="tbl-wrap" style="max-height:70vh">
+          <table><thead><tr>
+            <th>#</th><th>Name</th><th>Ph.D. Status</th><th>Max</th><th>Assigned</th><th>Actions</th>
+          </tr></thead><tbody id="facultyMasterRows"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-reports">
+      <div class="card">
+        <h2>🏢 Company Register</h2>
+        <div class="filters" style="margin-bottom:14px">
+          <div><label class="fl">Search</label><input id="cmpSearch" placeholder="Search…"></div>
+          <div class="btn-row"><button class="btn ok" onclick="exportCurrent()">⬇ Export Excel</button></div>
+        </div>
+        <div class="tbl-wrap" style="max-height:50vh">
+          <table><thead><tr>
+            <th>#</th><th>Group</th><th>Company</th><th>Letter</th><th>Guide</th><th>Action</th>
+          </tr></thead><tbody id="companyRows"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>📥 Upload / 📤 Download Excel</h2>
+        <div class="hint">Upload one row per student. New groups / students are created automatically.</div>
+        <div class="btn-row">
+          <button class="btn" onclick="downloadTemplate()">⬇ Template</button>
+          <button class="btn ghost" onclick="exportCurrent()">⬇ Export</button>
+          <button class="btn ok" onclick="document.getElementById('fileInput').click()">⬆ Upload Excel</button>
+          <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none">
+        </div>
+        <div id="uploadStatus" style="margin-top:12px"></div>
+      </div>
+      <div class="card">
+        <h2>📄 PDF Reports</h2>
+        <div class="btn-row">
+          <button class="btn ok" onclick="printReports('completed')">📄 All Completed</button>
+          <button class="btn ghost" onclick="printReports('filtered')">📄 Filtered</button>
+          <button class="btn ghost" onclick="printReports('all')">📄 All</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="groupModal"><div class="modal">
+  <h3 id="groupModalTitle">Add Group</h3>
+  <input type="hidden" id="gEditId">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+    <div class="fld"><label class="fl">S.No.</label><input id="gSno" type="number" min="1"></div>
+    <div class="fld"><label class="fl">Course</label><select id="gCourse"><option>MCA</option><option>MSc IT</option></select></div>
+    <div class="fld"><label class="fl">Semester</label><input id="gSem" type="number" min="1" max="8" value="2"></div>
+  </div>
+  <div class="fld"><label class="fl">Group Name</label><input id="gName"></div>
+  <div class="fld"><label class="fl">Group Email</label><input id="gEmail"></div>
+  <div class="fld"><label class="fl">Research Topic</label><textarea id="gTopic" rows="2"></textarea></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+    <div class="fld"><label class="fl">Domain</label><input id="gDomain"></div>
+    <div class="fld"><label class="fl">Type</label><input id="gType"></div>
+    <div class="fld"><label class="fl">Guide</label><select id="gGuide"><option value="">— Unassigned —</option></select></div>
+  </div>
+  <div class="fld"><label class="fl">Company</label><input id="gCompany"></div>
+  <div class="fld"><label class="fl">Company Letter URL</label><input id="gUrl"></div>
+  <div class="fld"><label class="fl">Students</label><div id="studentEditor"></div>
+    <button class="btn ghost sm" onclick="addStudentRow()">➕ Add Student</button></div>
+  <div class="modal-actions">
+    <button class="btn bad" id="gDeleteBtn" onclick="deleteGroupFromModal()" style="margin-right:auto;display:none">🗑 Delete</button>
+    <button class="btn ghost" onclick="closeGroupModal()">Cancel</button>
+    <button class="btn" onclick="saveGroup()">Save</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="facultyModal"><div class="modal" style="max-width:420px">
+  <h3 id="facultyModalTitle">Add Faculty</h3>
+  <input type="hidden" id="fEditName">
+  <div class="fld"><label class="fl">Faculty Name</label><input id="fNameInput"></div>
+  <div class="fld"><label class="fl">Ph.D. Status</label>
+    <select id="fStatusInput">
+      <option>Ph.D. Completed</option><option>Ph.D. Pursuing</option><option>Non Ph.D.</option>
+    </select></div>
+  <div class="fld"><label class="fl">Max Groups</label><input id="fCapInput" type="number" min="0" max="50" value="3"></div>
+  <div class="modal-actions">
+    <button class="btn ghost" onclick="closeFacultyModal()">Cancel</button>
+    <button class="btn" onclick="saveFaculty()">Save</button>
+  </div>
+</div></div>
+
+<div class="modal-backdrop" id="companyModal"><div class="modal" style="max-width:520px">
+  <h3>🏢 Company Details</h3>
+  <div class="fld"><label class="fl">Group</label><input id="mGroup" readonly></div>
+  <div class="fld"><label class="fl">Company Name</label><input id="mCompany"></div>
+  <div class="fld"><label class="fl">Company Letter URL</label><input id="mUrl"></div>
+  <div class="modal-actions">
+    <button class="btn ghost" onclick="closeModal()">Cancel</button>
+    <button class="btn" onclick="saveModal()">Save</button>
+  </div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+
+<script>
+/* ============================================================
+   ENV & STATE
+   ============================================================ */
+var HAS_GAS = (typeof google !== 'undefined' && google.script && google.script.run);
+
+var state = {
+  groups: [],
+  faculty: [],
+  cap: {},
+  nextGroupId: 1
+};
+
+var _saveTimer = null;
+var _savingNow = false;
+var _pendingAgain = false;
+var _serverOnline = false;
+var _dirty = false;
+
+/* ============================================================
+   SYNC BADGE + STATUS
+   ============================================================ */
+function setSync(kind, msg){
+  var b = document.getElementById('syncBadge');
+  var t = document.getElementById('syncText');
+  if(!b) return;
+  b.classList.remove('saved','saving','error','local');
+  b.classList.add(kind);
+  var labels = {saved:'Saved to Sheet', saving:'Saving…', error:'Save failed', local:'Local only'};
+  t.textContent = msg || labels[kind] || kind;
+}
+function showStatus(type, html){
+  var box = document.getElementById('statusBox');
+  if(!box) return;
+  box.innerHTML = html ? '<div class="banner '+type+'">'+html+'</div>' : '';
+}
+
+/* ============================================================
+   BOOTSTRAP — loads sheet in background; never stuck
+   ============================================================ */
+function bootstrap(){
+  setSync('saving','Loading…');
+  showStatus('info','⏳ Loading data from your Google Sheet…');
+
+  if(!HAS_GAS){
+    setSync('local','Local only');
+    showStatus('warn','⚠️ Open the <b>Web App URL</b> to load/save the Google Sheet.');
+    return;
+  }
+
+  var finished = false;
+  var watchdog = setTimeout(function(){
+    if(finished) return;
+    finished = true;
+    setSync('error','Timeout');
+    showStatus('err',
+      '⚠️ Google Sheet did not respond in 12 s. Showing seed data. ' +
+      '<button class="btn sm" onclick="reloadFromSheet()">🔄 Retry</button>'
+    );
+  }, 12000);
+
+  google.script.run
+    .withSuccessHandler(function(data){
+      if(finished) return;
+      finished = true;
+      clearTimeout(watchdog);
+      _serverOnline = true;
+      applyServerData(data);
+      setSync('saved');
+      showStatus('', '');
+      toast('✅ Loaded from Google Sheet');
+      renderAll();
+    })
+    .withFailureHandler(function(err){
+      if(finished) return;
+      finished = true;
+      clearTimeout(watchdog);
+      _serverOnline = false;
+      setSync('error','Load failed');
+      showStatus('err',
+        '❌ Could not load from Google Sheet: <b>' +
+        escapeHtml((err && err.message) ? err.message : String(err)) +
+        '</b><br><br><button class="btn sm" onclick="reloadFromSheet()">🔄 Retry</button>'
+      );
+    })
+    .loadData();
+}
+
+function applyServerData(data){
+  var groups  = (data && data.groups)  ? data.groups  : [];
+  var faculty = (data && data.faculty) ? data.faculty : [];
+
+  state.groups = groups.map(function(g){
+    return {
+      id: Number(g.id)||0,
+      course: g.course || 'MCA',
+      sem: Number(g.sem)||2,
+      group: g.group || '',
+      email: g.email || '',
+      students: Array.isArray(g.students)
+        ? g.students.map(function(s){return {name:s.name||'', enr:s.enr||''};})
+        : [],
+      topic: g.topic || '',
+      domain: g.domain || '',
+      type: g.type || '',
+      guide: g.guide || '',
+      studentReviews: Array.isArray(g.studentReviews)
+        ? g.studentReviews.map(function(r){
+            return (Array.isArray(r) && r.length===6) ? r.slice() : [null,null,null,null,null,null];
+          })
+        : [],
+      remark: g.remark || '',
+      company: g.company || '',
+      letterUrl: g.letterUrl || ''
+    };
+  });
+  state.groups.forEach(function(g){ ensureReviews(g); });
+
+  state.faculty = faculty.map(function(f){return {name:f.name, status:f.status||'Ph.D. Pursuing'};});
+  state.cap = {};
+  faculty.forEach(function(f){
+    var c = (f.cap===null||f.cap===undefined||f.cap==='') ? 3 : Number(f.cap);
+    state.cap[f.name] = isNaN(c) ? 3 : c;
+  });
+  state.groups.forEach(function(g){
+    if(g.guide && state.cap[g.guide]===undefined) state.cap[g.guide] = 3;
+  });
+
+  var maxId = state.groups.reduce(function(m,g){return Math.max(m, Number(g.id)||0);}, 0);
+  state.nextGroupId = (data && data.nextGroupId) ? Number(data.nextGroupId) : (maxId+1);
+}
+
+function applySeedLocally(){
+  state.groups = SEED_GROUPS.map(function(g){
+    return {
+      id: g.id, course: g.course, sem: g.sem, group: g.group, email: g.email,
+      students: g.students.map(function(s){return {name:s.name, enr:s.enr};}),
+      topic: g.topic, domain: g.domain, type: g.type, guide: g.guide,
+      studentReviews: g.students.map(function(){return [null,null,null,null,null,null];}),
+      remark:'', company:'', letterUrl:''
+    };
+  });
+  state.faculty = SEED_FACULTY.map(function(f){return {name:f[0], status:f[1]};});
+  state.cap = {};
+  state.faculty.forEach(function(f){state.cap[f.name]=3;});
+  state.nextGroupId = state.groups.reduce(function(m,g){return Math.max(m,g.id);},0) + 1;
+}
+
+function reloadFromSheet(){
+  state.groups = [];
+  state.faculty = [];
+  state.cap = {};
+  bootstrap();
+}
+
+/* ============================================================
+   AUTO-SAVE (debounced 600 ms + 15 s safety net)
+   ============================================================ */
+function buildPayload(){
+  return {
+    groups: state.groups,
+    faculty: state.faculty.map(function(f){
+      return {
+        name: f.name,
+        status: f.status,
+        cap: (state.cap[f.name]===undefined ? 3 : state.cap[f.name])
+      };
+    })
+  };
+}
+
+function save(){
+  _dirty = true;
+  setSync('saving');
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(function(){ flushSave(false); }, 600);
+}
+
+function saveNow(){
+  _dirty = true;
+  clearTimeout(_saveTimer);
+  flushSave(true);
+}
+
+function flushSave(showToast){
+  if(_savingNow){ _pendingAgain = true; return; }
+  if(!_dirty && !showToast) return;
+  _savingNow = true;
+  _dirty = false;
+  setSync('saving');
+
+  if(!HAS_GAS){
+    _savingNow = false;
+    setSync('local','Saved locally');
+    if(showToast) toast('⚠️ Not connected to Google Sheet');
+    return;
+  }
+
+  var done = function(ok, msg){
+    _savingNow = false;
+    if(ok) _serverOnline = true;
+    setSync(ok ? 'saved' : 'error', ok ? null : msg);
+    if(showToast) toast(ok ? '✅ Saved to Google Sheet' : ('❌ Save failed: ' + msg));
+    if(_pendingAgain){ _pendingAgain = false; flushSave(false); }
+  };
+
+  google.script.run
+    .withSuccessHandler(function(){ done(true); })
+    .withFailureHandler(function(err){
+      done(false, (err && err.message) ? err.message : String(err));
+    })
+    .saveData(buildPayload());
+}
+
+function resetAll(){
+  if(!confirm('Reset everything back to the built-in seed data? The Google Sheet will be overwritten.')) return;
+  if(!HAS_GAS){ toast('Open the Web App URL to reset'); return; }
+  setSync('saving');
+  google.script.run
+    .withSuccessHandler(function(data){ applyServerData(data); setSync('saved'); renderAll(); toast('Reset to seed data'); })
+    .withFailureHandler(function(err){ setSync('error'); alert('Reset failed: ' + ((err&&err.message)||err)); })
+    .resetToSeed();
+}
+
+function clearEverything(){
+  if(!confirm('Delete ALL groups, students, faculty and reviews from the Google Sheet?')) return;
+  if(!HAS_GAS){
+    state.groups=[]; state.faculty=[]; state.cap={}; state.nextGroupId=1;
+    renderAll(); toast('Cleared locally'); return;
+  }
+  setSync('saving');
+  google.script.run
+    .withSuccessHandler(function(data){ applyServerData(data); setSync('saved'); renderAll(); toast('All data cleared'); })
+    .withFailureHandler(function(err){ setSync('error'); alert('Clear failed: ' + ((err&&err.message)||err)); })
+    .clearAllData();
+}
+
+/* ============================================================
+   LOCAL SEED DATA (offline fallback only)
+   ============================================================ */
+var SEED_GROUPS = [
+{ id:1, course:"MCA", sem:2, group:"Hex", email:"2505112140079@paruluniversity.ac.in",
+  students:[{name:"Sanghvi Jaimin B",enr:"2505112140079"},{name:"Prajapati Chandra Prakash R",enr:"2505112140078"}],
+  topic:"Social Engineering Attacks", domain:"Others (Specify)", type:"Machine Learning / AI", guide:"Dr. Priya Swaminarayan" },
+{ id:2, course:"MCA", sem:2, group:"SPArda", email:"2505112120002@paruluniversity.ac.in",
+  students:[{name:"Antriksh khichi",enr:"2505112120002"},{name:"Sujal thakuri",enr:"2505112120128"},{name:"Prashik Ingle",enr:"2505112120065"}],
+  topic:"AI-Induced Cognitive Laziness: Measuring Dependency Patterns in University Students Using Generative AI Systems",
+  domain:"Education", type:"Machine Learning / AI", guide:"" },
+{ id:3, course:"MSc IT", sem:2, group:"Sibashish, Dhruv (03,)Roy", email:"2505102140032@paruluniversity.ac.in",
+  students:[{name:"Sibashish Panda",enr:"2505102140032"},{name:"Roy Akshay",enr:"2505102140029"},{name:"Ambaliya Dhruv",enr:"2505102140003"}],
+  topic:"Effectiveness of Sandbox Evasion Techniques against VM-based analysis",
+  domain:"Others (Specify)", type:"Cybersecurity", guide:"Dr. Hina Chokshi" },
+{ id:4, course:"MCA", sem:2, group:"The Hype", email:"2505112070023@paruluniversity.ac.in",
+  students:[{name:"Subratkumar Jaiprakash Yadav",enr:"2505112070023"}],
+  topic:"Real-Time Air Quality Prediction with MLOps Pipeline", domain:"Environment",
+  type:"Machine Learning / AI", guide:"" },
+{ id:5, course:"MCA", sem:2, group:"EduHealth Analytics group", email:"2505112120225@paruluniversity.ac.in",
+  students:[{name:"Twinkle Parmar",enr:"2505112120225"},{name:"Dev Jansari",enr:"2505112120007"},{name:"Malwana Raj Mahendrabhai",enr:"2505112120166"}],
+  topic:"AI-Driven Integrated Platform for Child Education and Health Monitoring in ICDS",
+  domain:"Others (Specify)", type:"Others", guide:"" },
+{ id:6, course:"MCA", sem:2, group:"Researcher's", email:"2505112070012@paruluniversity.ac.in",
+  students:[{name:"Sujal Patel",enr:"2505112070012"},{name:"Rushank Chokshi",enr:"2505112070036"},{name:"Kartik Sadhu",enr:"2505112070001"}],
+  topic:"Design the smallest neural networks to solve ARC-AGI image transformations",
+  domain:"Others (Specify)", type:"Machine Learning / AI", guide:"Dr. Priya Swaminarayan" },
+{ id:7, course:"MCA", sem:2, group:"Methodical Minds", email:"2505112110056@paruluniversity.ac.in",
+  students:[{name:"Manshi Gohil",enr:"2505112110056"},{name:"Souvik Sen",enr:"2505102110013"},{name:"Akanksha Kumari",enr:"2505112110055"}],
+  topic:"Student Performance Prediction System", domain:"Education", type:"Data Science", guide:"" },
+{ id:8, course:"MSc IT", sem:2, group:"White_Hat", email:"2505102140041@paruluniversity.ac.in",
+  students:[{name:"KONATE IBRAHIM",enr:"2505102140041"},{name:"Nchakha Mantsoe",enr:"2505102140042"},{name:"LAURENT MWITA MAHEMBA",enr:"2505102140048"}],
+  topic:"SECURITY FLAWS IN CORPORATE NETWORK: A CRITICAL ANALYSIS OF CRYPTOGRAPHIC CONTROLS AND INTRUSION DETECTION MECHANISMS",
+  domain:"Others (Specify)", type:"Cybersecurity", guide:"Prof. Vivek Dave" },
+{ id:9, course:"MSc IT", sem:2, group:"AI-Driven Smart ETL for Big Data Analytics", email:"2505102130003@paruluniversity.ac.in",
+  students:[{name:"Kaustuv Mallick",enr:"2505102130003"},{name:"Padvi Jigarkumar Sureshbhai",enr:"2505102130007"},{name:"Tambat Dhruv Sachin",enr:"2505112130028"}],
+  topic:"AI-Driven Smart ETL for Big Data Analytics", domain:"Others (Specify)", type:"Machine Learning / AI", guide:"" },
+{ id:10, course:"MCA", sem:2, group:"Ethanol_productuion", email:"2505112110032@paruluniversity.ac.in",
+  students:[{name:"Akshay Ashok Desai",enr:"2505112110065"},{name:"Sarthak Parashar",enr:"2505112110032"},{name:"Prathamesh Patil",enr:"2505112130004"}],
+  topic:"Ethanol production", domain:"Agriculture", type:"Others", guide:"" },
+{ id:11, course:"MCA", sem:2, group:"The Consensus Trio", email:"2505112110044@paruluniversity.ac.in",
+  students:[{name:"Hunain Mahudawala",enr:"2505112110066"},{name:"Joel Kunjumon",enr:"2505112110044"},{name:"Rishi Mohinani",enr:"2505112110049"}],
+  topic:"A Digital Platform for Peer-Assisted Mental Health Support Among Students",
+  domain:"Healthcare", type:"Software Engineering", guide:"Dr. Abhishek Mehta" },
+{ id:12, course:"MCA", sem:2, group:"Study Masters", email:"2505112130022@paruluniversity.ac.in",
+  students:[{name:"Patel Krupaben Keyurkumar",enr:"2505112130022"},{name:"Chudasma Darshil Ashokbhai",enr:"2505112110009"},{name:"Vikas Kumar Choudhary",enr:"2505112110037"}],
+  topic:"AI based solutions for environmental monitoring in urban cities",
+  domain:"Environment", type:"Machine Learning / AI", guide:"Dr. Priya Swaminarayan" },
+{ id:13, course:"MCA", sem:2, group:"Data Trinity", email:"2505112120032@paruluniversity.ac.in",
+  students:[{name:"Thakar Tej",enr:"2505112120032"},{name:"Jyot Makadiya",enr:"2505112120082"},{name:"Bedabrata Nayak",enr:"2505112120003"}],
+  topic:"Android Application for Carbon Footprint Calculation of Daily Student Activities",
+  domain:"Environment", type:"Interdisciplinary", guide:"Dr. Abhishek Mehta" },
+{ id:14, course:"MCA", sem:2, group:"NIVA", email:"2505112120168@paruluniversity.ac.in",
+  students:[{name:"Ravi Pandey",enr:"2505112120179"},{name:"Nandani Gupta",enr:"2505112120168"}],
+  topic:"Benchmarking Large Language Models on Trilingual Code-Mixed Sentiment Analysis",
+  domain:"Others (Specify)", type:"Machine Learning / AI", guide:"" },
+{ id:15, course:"MCA", sem:2, group:"AutoMl Pioneers", email:"2505112120080@paruluniversity.ac.in",
+  students:[{name:"Machhi Tarunkumar Navinkumar",enr:"2505112120080"},{name:"Jeet Garg",enr:"250511212069"},{name:"Aditya Raj",enr:"2505112120038"}],
+  topic:"ENHANCING AUTOML PERFORMANCE USING HYBRID FEATURE SELECTION AND MODEL EXPLAINABILITY TECHNIQUES",
+  domain:"Others (Specify)", type:"Machine Learning / AI", guide:"" },
+{ id:16, course:"MSc IT", sem:2, group:"Knowledge Seekers", email:"2505102130010@paruluniversity.ac.in",
+  students:[{name:"Purushottam Sah",enr:"2505102130010"},{name:"Prateek Kumar Sinha",enr:"2505112130023"},{name:"Vishwraj Singh Rathore",enr:"2505112130042"}],
+  topic:"Design and Implementation of a Scalable Big Data Architecture for COVID-19 Surveillance and Decision Support",
+  domain:"Healthcare", type:"Data Science", guide:"Dr. Ghanshyam Rathod" },
+{ id:17, course:"MCA", sem:2, group:"Neural Nexus", email:"2505112120029@paruluniversity.ac.in",
+  students:[{name:"Shubham Suryavanshi",enr:"2505112120029"},{name:"Vishesh Jahangir",enr:"2505112120035"},{name:"Goutam purohit",enr:"2505112120221"}],
+  topic:"Explainable AI-Based Pneumonia Detection using Deep Learning",
+  domain:"Others (Specify)", type:"Machine Learning / AI", guide:"Dr. Priya Swaminarayan" },
+{ id:18, course:"MCA", sem:2, group:"Brainstormers", email:"2505112120061@paruluniversity.ac.in",
+  students:[{name:"HARSH PATEL",enr:"2505112120061"},{name:"ISHA RATHOD",enr:"2505112120066"},{name:"SAHIL PAL",enr:"2505112120025"}],
+  topic:"Enhanced English Learning System with Typing Skill Evaluation",
+  domain:"Education", type:"Software Engineering", guide:"Dr. Ghanshyam Rathod" }
+];
+
+var SEED_FACULTY = [
+["Dr. Priya Swaminarayan","Ph.D. Completed"],["Dr. Hina Chokshi","Ph.D. Completed"],
+["Prof. Vivek Dave","Ph.D. Pursuing"],["Dr. Abhishek Mehta","Ph.D. Completed"],
+["Prof. Manishkumar Joshi","Ph.D. Pursuing"],["Prof. Vijya Tulsani","Ph.D. Pursuing"],
+["Prof. Sohil Parmar","Ph.D. Pursuing"],["Prof. Faruk Abdulla","Ph.D. Pursuing"],
+["Dr. Ghanshyam Rathod","Ph.D. Completed"],["Prof. Hardik Parmar","Ph.D. Pursuing"],
+["Prof. Jigar Bhavsar","Ph.D. Pursuing"],["Prof. Megha Trivedi","Ph.D. Pursuing"],
+["Prof. Sweta Jethva","Ph.D. Pursuing"],["Prof. Vipul Gamit","Ph.D. Pursuing"],
+["Prof. Nirmit Shah","Ph.D. Pursuing"],["Prof. Shikha Bansal","Ph.D. Pursuing"],
+["Prof. Rinku Patil","Ph.D. Pursuing"],["Prof. Arun U","Ph.D. Pursuing"],
+["Prof. Mehulkumar Dalwadi","Ph.D. Pursuing"],["Prof. RamDeepak Yadagiri","Non Ph.D."],
+["Prof. Vaishali Shah","Ph.D. Pursuing"],["Prof. Smarika Rai","Ph.D. Pursuing"],
+["Prof. Saumil Trivedi","Ph.D. Pursuing"],["Prof. Rinkal Sarvaiya","Ph.D. Pursuing"],
+["Prof. Preeti Sharma","Ph.D. Pursuing"],["Prof. Vishakha Bathwar","Ph.D. Pursuing"],
+["Prof. Chandankumar Singh","Non Ph.D."],["Prof. Priyanka Mod","Non Ph.D."],
+["Prof. Khyati Kariya","Ph.D. Pursuing"],["Prof. Tanmay Shah","Non Ph.D."],
+["Prof. Komal Bharti","Non Ph.D."],["Prof. Aniket Paul","Non Ph.D."],
+["Ms. Niharika Agarwal","Ph.D. Pursuing"],["Prof. Aesh Gada","Ph.D. Pursuing"],
+["Prof. Madhav J Kapadiya","Ph.D. Pursuing"],["Prof. Adarsh Ashok","Non Ph.D."],
+["Prof. Pratik Parmar","Non Ph.D."],["Prof. Shivaniba Dilipsinh Bhadoriya","Non Ph.D."],
+["Prof. Honey Parmar","Ph.D. Pursuing"],["Prof. Chaitali Nayka","Non Ph.D."],
+["Prof. Mini Bhola","Ph.D. Pursuing"],["Prof. Himanshu Yadav","Non Ph.D."],
+["Prof. Payal Parekh","Ph.D. Pursuing"],["Prof. Sathwik Chebrolu","Non Ph.D."],
+["Prof. Pratik Raj","Non Ph.D."],["Prof. Saikat Paramanik","Non Ph.D."],
+["Prof. Anmol Singh","Ph.D. Pursuing"],["Prof. Jatin Morwal","Non Ph.D."],
+["Prof. Pritam","Non Ph.D."],["Prof. Satyamani Gayatri","Non Ph.D."],
+["Prof. Dipti Sharma","Non Ph.D."],["Prof. Ashutosh Solanki","Non Ph.D."],
+["Prof. Ronak Mehta","Non Ph.D."],["Prof. Kashetti Harshith","Non Ph.D."],
+["Prof. Lakshya Namdeo","Non Ph.D."],["Prof. Satyendra Sharma","Ph.D. Pursuing"],
+["Prof. Nikunj Lathiya","Non Ph.D."],["Prof. Ashutosh Gautam","Non Ph.D."],
+["Prof. Divya Vasoya","Non Ph.D."],["Prof. Isha Sevak","Non Ph.D."],
+["Prof. Navneet Gupta","Ph.D. Pursuing"],["Prof. Shivam Bhakta","Non Ph.D."],
+["Prof. Badgujar Sunny","Non Ph.D."],["Prof. Kritika Pandey","Ph.D. Pursuing"],
+["Prof. Charmi Purohit","Non Ph.D."],["Prof. Mohd Affan Sheikh","Non Ph.D."],
+["Prof. Natwar Jha","Ph.D. Pursuing"],["Prof. Bhojani Sanjay","Non Ph.D."],
+["Prof. Sanjaykumar Parmar","Non Ph.D."],["Prof. Koushiki","Non Ph.D."],
+["Prof. Biru Gond","Non Ph.D."],["Prof. Sunny Parmar","Non Ph.D."],
+["Prof. Kuntal Prananik","Non Ph.D."],["Prof. Nilesh Panchotiya","Non Ph.D."],
+["Prof. Naitik Doshi","Non Ph.D."],["Prof. Ishita Jain","Non Ph.D."],
+["Prof. Khandelval Varshaben","Non Ph.D."],["Prof. Hiral Thakar","Non Ph.D."]
+];
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function escapeHtml(s){
+  return (s==null ? '' : String(s))
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function esc(s){ return escapeHtml(s); }
+function toast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.classList.remove('show'); }, 2400);
+}
+function uniqueSorted(a){ return Array.from(new Set(a.filter(Boolean))).sort(function(x,y){return String(x).localeCompare(String(y));}); }
+function findGroup(id){ return state.groups.filter(function(g){return g.id===id;})[0]; }
+
+function ensureReviews(g){
+  if(!Array.isArray(g.studentReviews)) g.studentReviews = [];
+  while(g.studentReviews.length < g.students.length) g.studentReviews.push([null,null,null,null,null,null]);
+  if(g.studentReviews.length > g.students.length) g.studentReviews.length = g.students.length;
+  g.studentReviews.forEach(function(r,i){
+    if(!Array.isArray(r) || r.length!==6) g.studentReviews[i] = [null,null,null,null,null,null];
+  });
+}
+function studentReviewCount(g, si){
+  ensureReviews(g);
+  return g.studentReviews[si].filter(function(v){return v!==null && v!=='' && v!==undefined;}).length;
+}
+function studentReviewTotal(g, si){
+  ensureReviews(g);
+  return g.studentReviews[si].reduce(function(a,b){return a+(Number(b)||0);}, 0);
+}
+function studentDone(g, si){ return studentReviewCount(g, si)===6; }
+function groupDone(g){
+  if(!g.students.length) return false;
+  for(var i=0;i<g.students.length;i++) if(!studentDone(g,i)) return false;
+  return true;
+}
+function groupTotalReviewsDone(g){
+  return g.students.reduce(function(a,_,i){return a+studentReviewCount(g,i);},0);
+}
+function groupMaxReviews(g){ return g.students.length*6; }
+function remarkOf(g){ return g.remark || (groupDone(g) ? 'Completed' : 'Pending'); }
+function statusKey(g){
+  if(groupDone(g)) return 'done';
+  return groupTotalReviewsDone(g) > 0 ? 'prog' : 'none';
+}
+function studentNames(g){ return g.students.map(function(s){return s.name;}).join(', '); }
+
+/* ============================================================
+   TABS
+   ============================================================ */
+document.querySelectorAll('.tab').forEach(function(t){
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});
+    document.querySelectorAll('.panel').forEach(function(x){x.classList.remove('active');});
+    t.classList.add('active');
+    document.getElementById('panel-'+t.dataset.tab).classList.add('active');
+  });
+});
+
+/* ============================================================
+   KPI / DASHBOARD
+   ============================================================ */
+function renderKPI(){
+  var totalGroups = state.groups.length;
+  var totalStudents = state.groups.reduce(function(a,g){return a+g.students.length;},0);
+  var assigned = state.groups.filter(function(g){return g.guide;}).length;
+  var unassigned = totalGroups - assigned;
+  var facUsed = new Set(state.groups.filter(function(g){return g.guide;}).map(function(g){return g.guide;})).size;
+  var groupsDone = state.groups.filter(groupDone).length;
+  var reviewsEntered = state.groups.reduce(function(a,g){return a+groupTotalReviewsDone(g);},0);
+  var reviewsPossible = state.groups.reduce(function(a,g){return a+groupMaxReviews(g);},0);
+  var studentsDone = state.groups.reduce(function(a,g){
+    return a+g.students.filter(function(_,i){return studentDone(g,i);}).length;
+  },0);
+  var withCompany = state.groups.filter(function(g){return g.company;}).length;
+
+  document.getElementById('kpiBox').innerHTML =
+    '<div class="kpi"><div class="v">'+totalGroups+'</div><div class="l">Total Groups</div></div>'+
+    '<div class="kpi"><div class="v">'+totalStudents+'</div><div class="l">Total Students</div></div>'+
+    '<div class="kpi g"><div class="v">'+assigned+'</div><div class="l">Guides Allocated</div></div>'+
+    '<div class="kpi r"><div class="v">'+unassigned+'</div><div class="l">Unallocated</div></div>'+
+    '<div class="kpi"><div class="v">'+facUsed+'</div><div class="l">Faculty Engaged</div></div>'+
+    '<div class="kpi g"><div class="v">'+groupsDone+'</div><div class="l">Groups Reviewed</div></div>'+
+    '<div class="kpi g"><div class="v">'+studentsDone+'/'+totalStudents+'</div><div class="l">Students Done</div></div>'+
+    '<div class="kpi w"><div class="v">'+reviewsEntered+'/'+reviewsPossible+'</div><div class="l">Review Marks</div></div>'+
+    '<div class="kpi"><div class="v">'+withCompany+'</div><div class="l">Company Mapped</div></div>';
+
+  var map = {};
+  state.groups.forEach(function(g){
+    if(!g.guide) return;
+    if(!map[g.guide]) map[g.guide] = {total:0, done:0, students:0, studentsDone:0};
+    map[g.guide].total++;
+    map[g.guide].students += g.students.length;
+    g.students.forEach(function(_,i){ if(studentDone(g,i)) map[g.guide].studentsDone++; });
+    if(groupDone(g)) map[g.guide].done++;
+  });
+  var rows = Object.keys(map).map(function(k){return [k, map[k]];})
+    .sort(function(a,b){return b[1].total-a[1].total;}).slice(0,20);
+  document.getElementById('facProgress').innerHTML = rows.length ? rows.map(function(kv){
+    var name = kv[0], d = kv[1];
+    var pct = d.students>0 ? Math.round(d.studentsDone/d.students*100) : 0;
+    return '<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12.5px">'+
+      '<b>'+esc(name)+'</b><span class="sub">'+d.done+'/'+d.total+' groups • '+d.studentsDone+'/'+d.students+' students • '+pct+'%</span>'+
+      '</div><div class="bar '+(pct===100?'ok':'w')+'"><i style="width:'+pct+'%"></i></div></div>';
+  }).join('') : '<div class="empty">No allocations yet</div>';
+
+  var dmap = {};
+  state.groups.forEach(function(g){ dmap[g.domain||'—'] = (dmap[g.domain||'—']||0)+1; });
+  var dRows = Object.keys(dmap).map(function(k){return [k, dmap[k]];})
+    .sort(function(a,b){return b[1]-a[1];});
+  var max = dRows.length ? dRows[0][1] : 1;
+  document.getElementById('domainBars').innerHTML = dRows.length ? dRows.map(function(kv){
+    return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12.5px">'+
+      '<b>'+esc(kv[0])+'</b><span class="sub">'+kv[1]+' groups</span></div>'+
+      '<div class="bar"><i style="width:'+Math.round(kv[1]/max*100)+'%"></i></div></div>';
+  }).join('') : '<div class="empty">No data</div>';
+}
+
+/* ============================================================
+   FILTERS
+   ============================================================ */
+function populateFilterDropdowns(){
+  var setOpts = function(id, arr){
+    var s = document.getElementById(id);
+    var cur = s.value;
+    s.innerHTML = '<option value="">All</option>' + arr.map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
+    if(arr.indexOf(cur)>=0) s.value = cur;
+  };
+  setOpts('fCourse', uniqueSorted(state.groups.map(function(g){return g.course;})));
+  setOpts('fSem', uniqueSorted(state.groups.map(function(g){return String(g.sem);})));
+  setOpts('fDomain', uniqueSorted(state.groups.map(function(g){return g.domain;})));
+  setOpts('fType', uniqueSorted(state.groups.map(function(g){return g.type;})));
+  setOpts('fGuide', uniqueSorted(state.groups.map(function(g){return g.guide;})));
+
+  var rv = document.getElementById('rvGuide');
+  var cur = rv.value;
+  rv.innerHTML = '<option value="">All</option>' + uniqueSorted(state.groups.map(function(g){return g.guide;}))
+    .map(function(v){return '<option>'+esc(v)+'</option>';}).join('');
+  if([].some.call(rv.options, function(o){return o.value===cur;})) rv.value = cur;
+
+  var af = document.getElementById('allocFacFilter');
+  var cur2 = af.value;
+  af.innerHTML = '<option value="">All Faculty</option>' + state.faculty.map(function(f){return '<option>'+esc(f.name)+'</option>';}).join('');
+  if([].some.call(af.options, function(o){return o.value===cur2;})) af.value = cur2;
+}
+
+function filteredGroups(){
+  var q = (document.getElementById('fQ').value||'').toLowerCase().trim();
+  var course = document.getElementById('fCourse').value;
+  var sem = document.getElementById('fSem').value;
+  var domain = document.getElementById('fDomain').value;
+  var type = document.getElementById('fType').value;
+  var guide = document.getElementById('fGuide').value;
+  var status = document.getElementById('fStatus').value;
+  var company = document.getElementById('fCompany').value;
+
+  return state.groups.filter(function(g){
+    if(course && g.course!==course) return false;
+    if(sem && String(g.sem)!==sem) return false;
+    if(domain && g.domain!==domain) return false;
+    if(type && g.type!==type) return false;
+    if(guide && g.guide!==guide) return false;
+    if(status && statusKey(g)!==status) return false;
+    if(company==='yes' && !g.company) return false;
+    if(company==='no' && g.company) return false;
+    if(q){
+      var hay = [g.group, g.topic, g.domain, g.type, g.guide, g.course, g.email,
+        studentNames(g), g.students.map(function(s){return s.enr;}).join(' '), g.company]
+        .join(' ').toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  });
+}
+
+/* ============================================================
+   GROUPS
+   ============================================================ */
+function renderGroups(){
+  var rows = filteredGroups();
+  document.getElementById('filterCount').textContent = 'Showing ' + rows.length + ' of ' + state.groups.length + ' groups';
+
+  document.getElementById('groupRows').innerHTML = rows.map(function(g){
+    ensureReviews(g);
+    var done = groupTotalReviewsDone(g);
+    var max = groupMaxReviews(g);
+    var sk = statusKey(g);
+    var badge = sk==='done'?'pill ok':sk==='prog'?'pill w':'pill gy';
+    var letter = g.letterUrl
+      ? '<a class="link" href="'+esc(g.letterUrl)+'" target="_blank">🔗 Open</a>'
+      : '<span class="sub">—</span>';
+    var guideOpts = ['<option value="">— Unassigned —</option>']
+      .concat(state.faculty.map(function(f){
+        return '<option '+(g.guide===f.name?'selected':'')+'>'+esc(f.name)+'</option>';
+      })).join('');
+    return '<tr>'+
+      '<td>'+g.id+'</td>'+
+      '<td><b>'+esc(g.group)+'</b></td>'+
+      '<td><span class="pill b">'+esc(g.course)+'</span><div class="sub">Sem '+g.sem+'</div></td>'+
+      '<td>'+g.students.map(function(s){return esc(s.name)+'<div class="sub">'+esc(s.enr)+'</div>';})
+        .join('<hr style="border:0;border-top:1px dashed #e3e7f2;margin:4px 0">')+'</td>'+
+      '<td class="topic">'+esc(g.topic)+'</td>'+
+      '<td><span class="pill gy">'+esc(g.domain)+'</span></td>'+
+      '<td class="sub">'+esc(g.type)+'</td>'+
+      '<td><select class="guide-sel" data-gid="'+g.id+'" onchange="setGuide(this)">'+guideOpts+'</select></td>'+
+      '<td><span class="pill '+badge+'">'+done+'/'+max+'</span></td>'+
+      '<td><span class="pill '+(remarkOf(g)==='Completed'?'ok':'w')+'">'+esc(remarkOf(g))+'</span></td>'+
+      '<td>'+(g.company ? '<b>'+esc(g.company)+'</b>' : '<span class="sub">—</span>')+'</td>'+
+      '<td>'+letter+'</td>'+
+      '<td><div class="btn-row">'+
+        '<button class="btn ghost sm" onclick="openGroupModal('+g.id+')">✏️</button>'+
+        '<button class="btn ghost sm" onclick="openCompanyModal('+g.id+')">🏢</button>'+
+        '<button class="btn ok sm" onclick="printReports(\'one\', '+g.id+')">📄</button>'+
+        '<button class="btn bad sm" onclick="deleteGroup('+g.id+')">🗑</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('') || '<tr><td colspan="13" class="empty">No groups match. Click ➕ Add Group.</td></tr>';
+}
+function setGuide(sel){
+  var id = parseInt(sel.dataset.gid);
+  var g = findGroup(id); if(!g) return;
+  g.guide = sel.value;
+  save(); renderAll();
+  toast('Guide updated');
+}
+function resetFilters(){
+  ['fQ','fCourse','fSem','fDomain','fType','fGuide','fStatus','fCompany'].forEach(function(id){
+    document.getElementById(id).value = '';
+  });
+  renderGroups();
+}
+function deleteGroup(id){
+  var g = findGroup(id); if(!g) return;
+  if(!confirm('Delete group "'+g.group+'" and all its students & reviews?')) return;
+  state.groups = state.groups.filter(function(x){return x.id!==id;});
+  save(); renderAll(); toast('Group deleted');
+}
+
+/* ============================================================
+   GROUP MODAL
+   ============================================================ */
+var studentDraft = [];
+
+function openGroupModal(id){
+  document.getElementById('groupModal').classList.add('show');
+  document.getElementById('gEditId').value = id || '';
+  document.getElementById('groupModalTitle').textContent = id ? 'Edit Group' : 'Add Group';
+
+  if(id){
+    var g = findGroup(id); if(!g) return;
+    document.getElementById('gSno').value = g.id;
+    document.getElementById('gCourse').value = g.course;
+    document.getElementById('gSem').value = g.sem;
+    document.getElementById('gName').value = g.group;
+    document.getElementById('gEmail').value = g.email||'';
+    document.getElementById('gTopic').value = g.topic||'';
+    document.getElementById('gDomain').value = g.domain||'';
+    document.getElementById('gType').value = g.type||'';
+    document.getElementById('gCompany').value = g.company||'';
+    document.getElementById('gUrl').value = g.letterUrl||'';
+    studentDraft = g.students.map(function(s){return {name:s.name, enr:s.enr};});
+    document.getElementById('gDeleteBtn').style.display = 'inline-flex';
+  } else {
+    document.getElementById('gSno').value = state.nextGroupId;
+    document.getElementById('gCourse').value = 'MCA';
+    document.getElementById('gSem').value = 2;
+    document.getElementById('gName').value = '';
+    document.getElementById('gEmail').value = '';
+    document.getElementById('gTopic').value = '';
+    document.getElementById('gDomain').value = '';
+    document.getElementById('gType').value = '';
+    document.getElementById('gCompany').value = '';
+    document.getElementById('gUrl').value = '';
+    studentDraft = [{name:'', enr:''}];
+    document.getElementById('gDeleteBtn').style.display = 'none';
+  }
+  var sel = document.getElementById('gGuide');
+  sel.innerHTML = '<option value="">— Unassigned —</option>' +
+    state.faculty.map(function(f){return '<option>'+esc(f.name)+'</option>';}).join('');
+  sel.value = id ? (findGroup(id).guide||'') : '';
+  renderStudentEditor();
+}
+function closeGroupModal(){ document.getElementById('groupModal').classList.remove('show'); }
+function renderStudentEditor(){
+  document.getElementById('studentEditor').innerHTML = studentDraft.map(function(s,i){
+    return '<div class="stud-row">'+
+      '<input placeholder="Student name" value="'+esc(s.name)+'" oninput="updateStudentDraft('+i+',\'name\',this.value)">'+
+      '<input placeholder="Enrolment number" value="'+esc(s.enr)+'" oninput="updateStudentDraft('+i+',\'enr\',this.value)">'+
+      '<button class="btn bad sm" type="button" onclick="removeStudentRow('+i+')">×</button>'+
+    '</div>';
+  }).join('');
+}
+function updateStudentDraft(i,k,v){ if(studentDraft[i]) studentDraft[i][k] = v; }
+function addStudentRow(){ studentDraft.push({name:'', enr:''}); renderStudentEditor(); }
+function removeStudentRow(i){
+  studentDraft.splice(i,1);
+  if(studentDraft.length===0) studentDraft.push({name:'', enr:''});
+  renderStudentEditor();
+}
+function saveGroup(){
+  var editingId = document.getElementById('gEditId').value;
+  var sno = parseInt(document.getElementById('gSno').value);
+  var course = document.getElementById('gCourse').value.trim();
+  var sem = parseInt(document.getElementById('gSem').value)||2;
+  var group = document.getElementById('gName').value.trim();
+  var email = document.getElementById('gEmail').value.trim();
+  var topic = document.getElementById('gTopic').value.trim();
+  var domain = document.getElementById('gDomain').value.trim();
+  var type = document.getElementById('gType').value.trim();
+  var guide = document.getElementById('gGuide').value;
+  var company = document.getElementById('gCompany').value.trim();
+  var letterUrl = document.getElementById('gUrl').value.trim();
+
+  if(!group){ alert('Group name is required.'); return; }
+  if(!sno || sno<1){ alert('Valid S.No. is required.'); return; }
+
+  var students = studentDraft
+    .map(function(s){return {name:(s.name||'').trim(), enr:(s.enr||'').trim()};})
+    .filter(function(s){return s.name || s.enr;});
+  if(!students.length){ alert('Add at least one student.'); return; }
+
+  if(editingId){
+    var g = findGroup(parseInt(editingId)); if(!g) return;
+    if(g.id !== sno && state.groups.some(function(x){return x.id===sno && x!==g;})){
+      alert('Another group already uses S.No. '+sno); return;
+    }
+    var oldStudents = g.students.slice();
+    var oldReviews = g.studentReviews.slice();
+    g.id = sno; g.course = course; g.sem = sem; g.group = group; g.email = email;
+    g.topic = topic; g.domain = domain; g.type = type; g.guide = guide;
+    g.company = company; g.letterUrl = letterUrl;
+    g.students = students.map(function(s){return {name:s.name, enr:s.enr};});
+    g.studentReviews = g.students.map(function(s){
+      var mi = -1;
+      for(var i=0;i<oldStudents.length;i++){
+        var os = oldStudents[i];
+        if((os.enr && s.enr && os.enr===s.enr) ||
+           (os.name && s.name && os.name.toLowerCase()===s.name.toLowerCase())){ mi = i; break; }
+      }
+      return (mi>=0 && oldReviews[mi]) ? oldReviews[mi].slice() : [null,null,null,null,null,null];
+    });
+  } else {
+    if(state.groups.some(function(x){return x.id===sno;})){
+      alert('S.No. '+sno+' already exists.'); return;
+    }
+    state.groups.push({
+      id:sno, course:course, sem:sem, group:group, email:email, students:students,
+      topic:topic, domain:domain, type:type, guide:guide,
+      company:company, letterUrl:letterUrl,
+      studentReviews: students.map(function(){return [null,null,null,null,null,null];}),
+      remark:''
+    });
+    state.nextGroupId = Math.max(state.nextGroupId, sno+1);
+  }
+  save(); closeGroupModal(); renderAll();
+  toast(editingId ? 'Group updated' : 'Group added');
+}
+function deleteGroupFromModal(){
+  var id = parseInt(document.getElementById('gEditId').value);
+  if(!id) return;
+  closeGroupModal(); deleteGroup(id);
+}
+
+/* ============================================================
+   COMPANY MODAL
+   ============================================================ */
+var companyModalId = null;
+function openCompanyModal(id){
+  var g = findGroup(id); if(!g) return;
+  companyModalId = id;
+  document.getElementById('mGroup').value = g.group + ' (' + g.course + ')';
+  document.getElementById('mCompany').value = g.company || '';
+  document.getElementById('mUrl').value = g.letterUrl || '';
+  document.getElementById('companyModal').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('companyModal').classList.remove('show');
+  companyModalId = null;
+}
+function saveModal(){
+  var g = findGroup(companyModalId); if(!g) return;
+  g.company = document.getElementById('mCompany').value.trim();
+  g.letterUrl = document.getElementById('mUrl').value.trim();
+  save(); closeModal(); renderAll(); toast('Company details saved');
+}
+
+/* ============================================================
+   REVIEW  ← includes Enter / Arrow key navigation
+   ============================================================ */
+function renderReview(){
+  var guide = document.getElementById('rvGuide').value;
+  var status = document.getElementById('rvStatus').value;
+  var q = (document.getElementById('rvSearch').value||'').toLowerCase();
+
+  var rows = state.groups.filter(function(g){
+    if(guide && g.guide!==guide) return false;
+    if(status && statusKey(g)!==status) return false;
+    if(q){
+      var hay = [g.group, g.topic, g.guide, studentNames(g)].join(' ').toLowerCase();
+      if(hay.indexOf(q)<0) return false;
+    }
+    return true;
+  });
+
+  var html = '';
+  rows.forEach(function(g){
+    ensureReviews(g);
+    var N = g.students.length;
+    if(!N) return;
+    g.students.forEach(function(st, si){
+      var marks = g.studentReviews[si];
+      var inputs = marks.map(function(v,ri){
+        return '<td><input class="mini" type="number" min="0" max="100" value="'+(v==null?'':v)+
+          '" data-gid="'+g.id+'" data-si="'+si+'" data-ri="'+ri+'" '+
+          'onfocus="this.select()" '+
+          'onchange="setStudentReview(this)"></td>';
+      }).join('');
+      var cnt = studentReviewCount(g, si);
+      var total = studentReviewTotal(g, si);
+      var statPill = cnt===6 ? '<span class="pill ok">Completed</span>'
+        : (cnt>0 ? '<span class="pill w">'+cnt+'/6</span>' : '<span class="pill gy">0/6</span>');
+      var firstCells = si===0
+        ? '<td rowspan="'+N+'">'+g.id+'</td>'+
+          '<td rowspan="'+N+'"><b>'+esc(g.group)+'</b></td>'+
+          '<td rowspan="'+N+'" class="topic" style="max-width:240px">'+esc(g.topic)+'</td>'+
+          '<td rowspan="'+N+'">'+(g.guide?esc(g.guide):'<span class="sub">Unassigned</span>')+'</td>'
+        : '';
+      var pdfCell = si===0
+        ? '<td rowspan="'+N+'"><button class="btn ok sm" onclick="printReports(\'one\', '+g.id+')">📄</button></td>'
+        : '';
+      html += '<tr class="'+(si===0?'grp-start':'')+'">'+firstCells+
+        '<td><b>'+esc(st.name)+'</b><div class="sub">'+esc(st.enr)+'</div></td>'+
+        inputs+
+        '<td id="tot-'+g.id+'-'+si+'"><b>'+total+'</b></td>'+
+        '<td id="stat-'+g.id+'-'+si+'">'+statPill+'</td>'+
+        pdfCell+'</tr>';
+    });
+  });
+  document.getElementById('reviewRows').innerHTML = html ||
+    '<tr><td colspan="14" class="empty">No records match.</td></tr>';
+}
+
+function setStudentReview(input){
+  var gid = parseInt(input.dataset.gid);
+  var si = parseInt(input.dataset.si);
+  var ri = parseInt(input.dataset.ri);
+  var g = findGroup(gid); if(!g) return;
+  ensureReviews(g);
+  var v = input.value;
+  g.studentReviews[si][ri] = v==='' ? null : Number(v);
+  if(groupDone(g)) g.remark = 'Completed';
+  else if(g.remark==='Completed') g.remark = 'Pending';
+  save();
+
+  var totCell = document.getElementById('tot-'+gid+'-'+si);
+  var statCell = document.getElementById('stat-'+gid+'-'+si);
+  var cnt = studentReviewCount(g, si);
+  var total = studentReviewTotal(g, si);
+  if(totCell) totCell.innerHTML = '<b>'+total+'</b>';
+  if(statCell){
+    statCell.innerHTML = cnt===6 ? '<span class="pill ok">Completed</span>'
+      : (cnt>0 ? '<span class="pill w">'+cnt+'/6</span>' : '<span class="pill gy">0/6</span>');
+  }
+  renderKPI();
+}
+
+function fillAllSix(){
+  var guide = document.getElementById('rvGuide').value;
+  var status = document.getElementById('rvStatus').value;
+  var q = (document.getElementById('rvSearch').value||'').toLowerCase();
+  var groups=0, students=0;
+  state.groups.forEach(function(g){
+    if(guide && g.guide!==guide) return;
+    if(status && statusKey(g)!==status) return;
+    if(q){
+      var hay = [g.group, g.topic, g.guide, studentNames(g)].join(' ').toLowerCase();
+      if(hay.indexOf(q)<0) return;
+    }
+    ensureReviews(g);
+    g.students.forEach(function(_,si){ g.studentReviews[si] = [8,8,8,8,8,8]; students++; });
+    g.remark = 'Completed';
+    groups++;
+  });
+  save(); renderAll();
+  toast('Filled 6 reviews for '+students+' student(s) across '+groups+' group(s)');
+}
+
+/* ============================================================
+   ALLOCATION
+   ============================================================ */
+function renderAllocation(){
+  var counts = {};
+  state.groups.forEach(function(g){ if(g.guide) counts[g.guide]=(counts[g.guide]||0)+1; });
+
+  document.getElementById('facTable').innerHTML = state.faculty.map(function(f,i){
+    var cap = state.cap[f.name]||0;
+    var used = counts[f.name] || 0;
+    var rem = Math.max(0, cap-used);
+    var pct = cap>0 ? Math.min(100, Math.round(used/cap*100)) : (used>0?100:0);
+    var cls = used>cap ? 'w' : (pct>=100?'ok':'');
+    var names = state.groups.filter(function(g){return g.guide===f.name;})
+      .map(function(g){return g.group;}).join(', ');
+    var badge = /completed/i.test(f.status) ? 'pill ok'
+      : /pursuing/i.test(f.status) ? 'pill b' : 'pill gy';
+    return '<tr><td>'+(i+1)+'</td><td><b>'+esc(f.name)+'</b></td>'+
+      '<td><span class="'+badge+'">'+esc(f.status)+'</span></td>'+
+      '<td><input class="mini" type="number" min="0" max="50" value="'+cap+
+        '" data-fac="'+encodeURIComponent(f.name)+'" onchange="setCap(this)"></td>'+
+      '<td><b>'+used+'</b></td><td>'+rem+'</td>'+
+      '<td><div class="bar '+cls+'"><i style="width:'+pct+'%"></i></div></td>'+
+      '<td class="sub">'+(esc(names) || '—')+'</td></tr>';
+  }).join('');
+
+  var totalCap = state.faculty.reduce(function(a,f){return a+(state.cap[f.name]||0);},0);
+  var assigned = state.groups.filter(function(g){return g.guide;}).length;
+  document.getElementById('allocSummary').textContent =
+    '— '+assigned+'/'+state.groups.length+' groups allocated • capacity '+totalCap;
+
+  renderFacultyCards();
+  renderFacultyMaster();
+}
+function setCap(input){
+  var name = decodeURIComponent(input.dataset.fac);
+  state.cap[name] = Math.max(0, parseInt(input.value)||0);
+  save(); renderAllocation(); renderKPI();
+}
+function applyDefaultToAll(){
+  var d = parseInt(document.getElementById('defaultCap').value)||0;
+  state.faculty.forEach(function(f){state.cap[f.name]=d;});
+  save(); renderAll(); toast('Default capacity = '+d);
+}
+function autoCapacity(){
+  var per = Math.max(1, Math.ceil(state.groups.length / Math.max(1,state.faculty.length)));
+  state.faculty.forEach(function(f){state.cap[f.name]=per;});
+  document.getElementById('defaultCap').value = per;
+  save(); renderAll(); toast('Balanced capacity = '+per);
+}
+function clearAllocation(){
+  if(!confirm('Remove all guide assignments?')) return;
+  state.groups.forEach(function(g){g.guide='';});
+  save(); renderAll(); toast('All allocations cleared');
+}
+function autoAllocate(){
+  var lock = document.getElementById('lockExisting').value === '1';
+  var phdFirst = document.getElementById('phdPriority').value === '1';
+  var defCap = parseInt(document.getElementById('defaultCap').value)||3;
+
+  if(!lock) state.groups.forEach(function(g){g.guide='';});
+
+  var usage = {};
+  state.faculty.forEach(function(f){usage[f.name]=0;});
+  state.groups.forEach(function(g){
+    if(g.guide && usage[g.guide]!==undefined) usage[g.guide]++;
+  });
+
+  var rank = function(s){
+    return /completed/i.test(s)?0 : /pursuing/i.test(s)?1 : 2;
+  };
+  var cands = state.faculty.map(function(f){
+    return {
+      name:f.name, status:f.status,
+      cap: state.cap[f.name] || defCap,
+      used: usage[f.name]||0
+    };
+  }).filter(function(f){return f.cap>0;});
+
+  var pending = state.groups.filter(function(g){return !g.guide;});
+  var placed = 0;
+  pending.forEach(function(g){
+    var best = null;
+    cands.forEach(function(f){
+      if(f.used >= f.cap) return;
+      if(!best){ best = f; return; }
+      var remF = f.cap - f.used, remB = best.cap - best.used;
+      if(phdFirst){
+        var rf = rank(f.status), rb = rank(best.status);
+        if(rf < rb || (rf===rb && remF > remB)) best = f;
+      } else if(remF > remB) best = f;
+    });
+    if(best){ best.used++; g.guide = best.name; placed++; }
+  });
+  save(); renderAll();
+  var left = state.groups.filter(function(g){return !g.guide;}).length;
+  toast('Allocated '+placed+' group(s)'+(left?' • '+left+' unallocated':''));
+}
+
+function renderFacultyCards(){
+  var fac = document.getElementById('allocFacFilter').value;
+  var course = document.getElementById('allocCourseFilter').value;
+  var q = (document.getElementById('allocSearch').value||'').toLowerCase();
+
+  var list = state.faculty;
+  if(fac) list = list.filter(function(f){return f.name===fac;});
+
+  var html = list.map(function(f){
+    var gs = state.groups.filter(function(g){return g.guide===f.name;});
+    if(course) gs = gs.filter(function(g){return g.course===course;});
+    if(q) gs = gs.filter(function(g){
+      return (g.group||'').toLowerCase().indexOf(q)>=0 ||
+             (g.topic||'').toLowerCase().indexOf(q)>=0 ||
+             studentNames(g).toLowerCase().indexOf(q)>=0;
+    });
+    if(!gs.length && (q||course||fac)) return '';
+    var cap = state.cap[f.name]||0;
+    var badge = /completed/i.test(f.status) ? 'pill ok'
+      : /pursuing/i.test(f.status) ? 'pill b' : 'pill gy';
+    return '<div class="fac-card"><div class="nm"><span>'+esc(f.name)+'</span>'+
+      '<span class="'+badge+'">'+esc(f.status)+'</span></div>'+
+      '<div class="sub" style="margin-top:4px">Assigned: <b>'+gs.length+'</b> / '+cap+'</div>'+
+      '<div class="gl">'+(gs.length ? gs.map(function(g){
+        return '<b>• '+esc(g.group)+'</b> — '+esc((g.topic||'').substring(0,70))+((g.topic||'').length>70?'…':'');
+      }).join('<br>') : 'No groups')+'</div></div>';
+  }).filter(Boolean).join('');
+
+  document.getElementById('facCards').innerHTML = html || '<div class="empty">No groups match</div>';
+}
+
+function renderFacultyMaster(){
+  var counts = {};
+  state.groups.forEach(function(g){ if(g.guide) counts[g.guide]=(counts[g.guide]||0)+1; });
+
+  document.getElementById('facultyMasterRows').innerHTML = state.faculty.map(function(f,i){
+    var cap = state.cap[f.name]||0;
+    var used = counts[f.name] || 0;
+    var badge = /completed/i.test(f.status) ? 'pill ok'
+      : /pursuing/i.test(f.status) ? 'pill b' : 'pill gy';
+    return '<tr><td>'+(i+1)+'</td><td><b>'+esc(f.name)+'</b></td>'+
+      '<td><span class="'+badge+'">'+esc(f.status)+'</span></td>'+
+      '<td>'+cap+'</td><td>'+used+'</td>'+
+      '<td><div class="btn-row">'+
+        '<button class="btn ghost sm" onclick="openFacultyModal(\''+encodeURIComponent(f.name)+'\')">✏️ Edit</button>'+
+        '<button class="btn bad sm" onclick="deleteFaculty(\''+encodeURIComponent(f.name)+'\')">🗑 Delete</button>'+
+      '</div></td></tr>';
+  }).join('') || '<tr><td colspan="6" class="empty">No faculty</td></tr>';
+}
+function openFacultyModal(name){
+  document.getElementById('facultyModal').classList.add('show');
+  if(name){
+    var decoded = decodeURIComponent(name);
+    var f = state.faculty.filter(function(x){return x.name===decoded;})[0];
+    if(!f) return;
+    document.getElementById('facultyModalTitle').textContent = 'Edit Faculty';
+    document.getElementById('fEditName').value = decoded;
+    document.getElementById('fNameInput').value = f.name;
+    document.getElementById('fStatusInput').value = f.status;
+    document.getElementById('fCapInput').value = state.cap[f.name] || 3;
+  } else {
+    document.getElementById('facultyModalTitle').textContent = 'Add Faculty';
+    document.getElementById('fEditName').value = '';
+    document.getElementById('fNameInput').value = '';
+    document.getElementById('fStatusInput').value = 'Ph.D. Pursuing';
+    document.getElementById('fCapInput').value = 3;
+  }
+}
+function closeFacultyModal(){ document.getElementById('facultyModal').classList.remove('show'); }
+function saveFaculty(){
+  var editing = document.getElementById('fEditName').value;
+  var name = document.getElementById('fNameInput').value.trim();
+  var status = document.getElementById('fStatusInput').value;
+  var cap = Math.max(0, parseInt(document.getElementById('fCapInput').value)||0);
+  if(!name){ alert('Name is required.'); return; }
+
+  if(editing){
+    var f = state.faculty.filter(function(x){return x.name===editing;})[0];
+    if(!f) return;
+    if(editing !== name){
+      state.groups.forEach(function(g){ if(g.guide===editing) g.guide = name; });
+      state.cap[name] = state.cap[editing] || cap;
+      delete state.cap[editing];
+    }
+    f.name = name; f.status = status;
+    state.cap[name] = cap;
+  } else {
+    if(state.faculty.some(function(f){return f.name.toLowerCase()===name.toLowerCase();})){
+      alert('Faculty already exists.'); return;
+    }
+    state.faculty.push({name:name, status:status});
+    state.cap[name] = cap;
+  }
+  save(); closeFacultyModal(); renderAll();
+  toast(editing ? 'Faculty updated' : 'Faculty added');
+}
+function deleteFaculty(name){
+  var decoded = decodeURIComponent(name);
+  if(!confirm('Delete faculty "'+decoded+'"?')) return;
+  state.faculty = state.faculty.filter(function(f){return f.name!==decoded;});
+  state.groups.forEach(function(g){ if(g.guide===decoded) g.guide=''; });
+  delete state.cap[decoded];
+  save(); renderAll(); toast('Faculty deleted');
+}
+
+/* ============================================================
+   COMPANY REGISTER
+   ============================================================ */
+function renderCompanyTable(){
+  var q = (document.getElementById('cmpSearch').value||'').toLowerCase();
+  var rows = state.groups.filter(function(g){
+    return g.company && (!q || g.company.toLowerCase().indexOf(q)>=0 || g.group.toLowerCase().indexOf(q)>=0);
+  });
+  document.getElementById('companyRows').innerHTML = rows.map(function(g){
+    return '<tr><td>'+g.id+'</td><td><b>'+esc(g.group)+'</b></td>'+
+      '<td>'+esc(g.company)+'</td>'+
+      '<td>'+(g.letterUrl ? '<a class="link" href="'+esc(g.letterUrl)+'" target="_blank">🔗 Open</a>' : '<span class="sub">Not uploaded</span>')+'</td>'+
+      '<td>'+(g.guide?esc(g.guide):'<span class="sub">—</span>')+'</td>'+
+      '<td><button class="btn ghost sm" onclick="openCompanyModal('+g.id+')">✏️</button></td></tr>';
+  }).join('') || '<tr><td colspan="6" class="empty">No company records</td></tr>';
+}
+
+/* ============================================================
+   EXCEL EXPORT / IMPORT
+   ============================================================ */
+var HEADERS = ["S.No.","Group Name","Student Name","Enrolment Number","Course","Semester",
+"Guide Name","Review 1","Review 2","Review 3","Review 4","Review 5","Review 6",
+"Student Total","Group Remark","Domain","Type of Research","Research Topic",
+"Company Name","Company Letter URL","Group Email"];
+
+function studentToRow(g, st, si){
+  ensureReviews(g);
+  var m = g.studentReviews[si];
+  return [g.id, g.group, st.name, st.enr, g.course, g.sem, g.guide,
+    m[0]==null?'':m[0], m[1]==null?'':m[1], m[2]==null?'':m[2], m[3]==null?'':m[3], m[4]==null?'':m[4], m[5]==null?'':m[5],
+    studentReviewTotal(g, si), remarkOf(g),
+    g.domain, g.type, g.topic, g.company, g.letterUrl, g.email];
+}
+function exportCurrent(){
+  var rows = [HEADERS];
+  state.groups.forEach(function(g){
+    g.students.forEach(function(st,si){ rows.push(studentToRow(g, st, si)); });
+  });
+  downloadSheet(rows, 'Seminar_StudentWise_Export.xlsx');
+}
+function downloadTemplate(){
+  var samples = [HEADERS,
+    [1,"Sample Group A","Student One","2505112100001","MCA",2,"Dr. Priya Swaminarayan",
+     8,8,8,8,8,8,48,"Completed","Education","Machine Learning / AI","Sample topic",
+     "ABC Technologies Pvt. Ltd.","https://example.com/letter.pdf","student1@paruluniversity.ac.in"],
+    [2,"Sample Group B","Student Three","2505102100003","MSc IT",2,"",
+     "","","","","","","","Pending","Healthcare","Cybersecurity","Second topic",
+     "","","student3@paruluniversity.ac.in"]];
+  downloadSheet(samples, 'Seminar_StudentWise_Template.xlsx');
+}
+function downloadSheet(rows, filename){
+  if(typeof XLSX !== 'undefined'){
+    try{
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Review');
+      XLSX.writeFile(wb, filename);
+      toast('Download started');
+      return;
+    }catch(e){ console.warn(e); }
+  }
+  var csv = rows.map(function(r){
+    return r.map(function(c){return '"'+(c==null?'':String(c)).replace(/"/g,'""')+'"';}).join(',');
+  }).join('\n');
+  var blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename.replace('.xlsx','.csv');
+  a.click();
+  toast('Downloaded as CSV');
+}
+function normHeader(h){ return String(h).toLowerCase().replace(/[^a-z0-9]/g,''); }
+function findKeyFn(keys){
+  var cands = Array.prototype.slice.call(arguments,1);
+  var i, c, j, k;
+  for(i=0;i<cands.length;i++){
+    c = cands[i];
+    for(j=0;j<keys.length;j++){ if(normHeader(keys[j])===c) return keys[j]; }
+  }
+  for(i=0;i<cands.length;i++){
+    c = cands[i];
+    for(k=0;k<keys.length;k++){ if(normHeader(keys[k]).indexOf(c)>=0) return keys[k]; }
+  }
+  return null;
+}
+function applyImport(rows){
+  if(!rows.length){ setUploadStatus('err','No rows found.'); return; }
+  var keys = Object.keys(rows[0]);
+  var kSno=findKeyFn(keys,'sno','srno','no'),
+      kGroup=findKeyFn(keys,'groupname','group'),
+      kStudent=findKeyFn(keys,'studentname','student'),
+      kEnr=findKeyFn(keys,'enrolmentnumber','enrolment','enrollment'),
+      kCourse=findKeyFn(keys,'course'), kSem=findKeyFn(keys,'semester','sem'),
+      kGuide=findKeyFn(keys,'guidename','guide'),
+      kR1=findKeyFn(keys,'review1'), kR2=findKeyFn(keys,'review2'),
+      kR3=findKeyFn(keys,'review3'), kR4=findKeyFn(keys,'review4'),
+      kR5=findKeyFn(keys,'review5'), kR6=findKeyFn(keys,'review6'),
+      kRemark=findKeyFn(keys,'groupremark','remark'),
+      kDomain=findKeyFn(keys,'domain','area'),
+      kType=findKeyFn(keys,'typeofresearch','type'),
+      kTopic=findKeyFn(keys,'researchtopic','topic'),
+      kComp=findKeyFn(keys,'companyname','company'),
+      kUrl=findKeyFn(keys,'companyletterurl','letterurl','letter'),
+      kEmail=findKeyFn(keys,'groupemail','email');
+
+  if(!kSno && !kGroup){
+    setUploadStatus('err','Need S.No. or Group Name column.'); return;
+  }
+
+  var buckets = {};
+  rows.forEach(function(r){
+    var sno = parseInt(r[kSno]);
+    var gname = (kGroup ? (r[kGroup]||'') : '').toString().trim();
+    var key = (isNaN(sno)?'x':sno) + '||' + gname.toLowerCase();
+    if(!buckets[key]) buckets[key] = {sno:sno, gname:gname, rows:[]};
+    buckets[key].rows.push(r);
+  });
+
+  var newGroups=0, updatedGroups=0, newStudents=0, updatedStudents=0;
+
+  Object.keys(buckets).forEach(function(key){
+    var b = buckets[key];
+    var g = !isNaN(b.sno) ? state.groups.filter(function(x){return x.id===b.sno;})[0] : null;
+    if(!g && b.gname){
+      g = state.groups.filter(function(x){return x.group.toLowerCase()===b.gname.toLowerCase();})[0];
+    }
+    if(!g){
+      var first = b.rows[0];
+      var id = (!isNaN(b.sno) && b.sno>0) ? b.sno : state.nextGroupId++;
+      g = {
+        id: id,
+        course: (kCourse && first[kCourse]) ? String(first[kCourse]).trim() : 'MCA',
+        sem: (kSem && first[kSem]) ? parseInt(first[kSem])||2 : 2,
+        group: b.gname || ('Group '+id),
+        email: (kEmail && first[kEmail]) ? String(first[kEmail]).trim() : '',
+        students: [], topic: (kTopic && first[kTopic]) ? String(first[kTopic]).trim() : '',
+        domain: (kDomain && first[kDomain]) ? String(first[kDomain]).trim() : '',
+        type: (kType && first[kType]) ? String(first[kType]).trim() : '',
+        guide: (kGuide && first[kGuide]) ? String(first[kGuide]).trim() : '',
+        company: (kComp && first[kComp]) ? String(first[kComp]).trim() : '',
+        letterUrl: (kUrl && first[kUrl]) ? String(first[kUrl]).trim() : '',
+        studentReviews: [], remark: ''
+      };
+      ensureReviews(g);
+      state.groups.push(g);
+      state.nextGroupId = Math.max(state.nextGroupId, id+1);
+      newGroups++;
+    } else {
+      var f2 = b.rows[0];
+      if(kGuide && f2[kGuide]) g.guide = String(f2[kGuide]).trim();
+      if(kDomain && f2[kDomain]) g.domain = String(f2[kDomain]).trim();
+      if(kType && f2[kType]) g.type = String(f2[kType]).trim();
+      if(kTopic && f2[kTopic]) g.topic = String(f2[kTopic]).trim();
+      if(kComp && f2[kComp]) g.company = String(f2[kComp]).trim();
+      if(kUrl && f2[kUrl]) g.letterUrl = String(f2[kUrl]).trim();
+      if(kEmail && f2[kEmail]) g.email = String(f2[kEmail]).trim();
+      if(kCourse && f2[kCourse]) g.course = String(f2[kCourse]).trim();
+      if(kSem && f2[kSem]) g.sem = parseInt(f2[kSem])||g.sem;
+      updatedGroups++;
+    }
+    ensureReviews(g);
+
+    b.rows.forEach(function(r){
+      var sName = (kStudent ? (r[kStudent]||'') : '').toString().trim();
+      var sEnr = (kEnr ? (r[kEnr]||'') : '').toString().trim();
+      if(!sName && !sEnr) return;
+
+      var si = -1;
+      if(sEnr){
+        for(var x=0;x<g.students.length;x++){ if(g.students[x].enr===sEnr){ si = x; break; } }
+      }
+      if(si<0 && sName){
+        var ln = sName.toLowerCase();
+        for(var y=0;y<g.students.length;y++){
+          if(g.students[y].name.toLowerCase()===ln){ si = y; break; }
+        }
+      }
+      if(si<0){
+        g.students.push({name:sName||('Student '+(g.students.length+1)), enr:sEnr});
+        g.studentReviews.push([null,null,null,null,null,null]);
+        si = g.students.length-1;
+        newStudents++;
+      } else {
+        if(sName && g.students[si].name !== sName) g.students[si].name = sName;
+        if(sEnr && g.students[si].enr !== sEnr) g.students[si].enr = sEnr;
+        updatedStudents++;
+      }
+      var rv = [kR1,kR2,kR3,kR4,kR5,kR6].map(function(k){
+        if(!k) return null;
+        var v = r[k];
+        return (v===''||v==null||v===undefined) ? null : Number(v);
+      });
+      rv.forEach(function(v,i){ if(v!==null && !isNaN(v)) g.studentReviews[si][i] = v; });
+    });
+
+    var fr = b.rows[0];
+    if(kRemark && fr[kRemark]) g.remark = String(fr[kRemark]).trim();
+    else if(groupDone(g)) g.remark = 'Completed';
+  });
+
+  save(); renderAll();
+  setUploadStatus('ok', 'Imported: +'+newGroups+' groups, '+updatedGroups+' updated, +'+newStudents+' students.');
+  toast('Imported: +'+newGroups+' groups');
+}
+function setUploadStatus(type, msg){
+  document.getElementById('uploadStatus').innerHTML = '<div class="banner '+type+'">'+msg+'</div>';
+}
+
+/* ============================================================
+   PDF REPORTS
+   ============================================================ */
+function reportHTML(g){
+  ensureReviews(g);
+  var rvHead = [1,2,3,4,5,6].map(function(i){return '<th>R'+i+'</th>';}).join('');
+  var rvRows = g.students.map(function(st, si){
+    var m = g.studentReviews[si];
+    var cnt = studentReviewCount(g, si);
+    var tot = studentReviewTotal(g, si);
+    var stat = cnt===6 ? 'Completed' : 'Pending';
+    return '<tr><td>'+esc(st.name)+'</td><td>'+(esc(st.enr)||'—')+'</td>'+
+      m.map(function(v){return '<td style="text-align:center">'+(v==null||v===''?'—':v)+'</td>';}).join('')+
+      '<td style="text-align:center"><b>'+tot+'</b></td>'+
+      '<td style="text-align:center"><b>'+stat+'</b></td></tr>';
+  }).join('') || '<tr><td colspan="10">No students</td></tr>';
+  var remark = remarkOf(g);
+  return '<div class="rpt">'+
+    '<div class="rpt-head"><div><h1>Parul University</h1>'+
+    '<h2>Faculty of IT &amp; Computer Science</h2>'+
+    '<p>MCA / M.Sc.(IT) — Semester 3 — Seminar Project Report</p></div>'+
+    '<div class="rpt-badge">'+esc(remark.toUpperCase())+'</div></div>'+
+    '<table class="rpt-table">'+
+      '<tr><th style="width:170px">Group Name</th><td><b>'+esc(g.group)+'</b></td>'+
+      '<th style="width:150px">Course / Semester</th><td>'+esc(g.course)+' / '+g.sem+'</td></tr>'+
+      '<tr><th>S.No.</th><td>'+g.id+'</td><th>Guide Name</th><td><b>'+(esc(g.guide)||'Not Assigned')+'</b></td></tr>'+
+      '<tr><th>Group Email</th><td colspan="3">'+(esc(g.email)||'—')+'</td></tr>'+
+    '</table>'+
+    '<h4>Student Details</h4>'+
+    '<table class="rpt-table"><tr><th style="width:60px">#</th><th>Student Name</th><th>Enrolment Number</th></tr>'+
+      (g.students.map(function(st,i){
+        return '<tr><td>'+(i+1)+'</td><td>'+esc(st.name)+'</td><td>'+(esc(st.enr)||'—')+'</td></tr>';
+      }).join('') || '<tr><td colspan="3">No students</td></tr>')+
+    '</table>'+
+    '<h4>Research Details</h4>'+
+    '<table class="rpt-table">'+
+      '<tr><th style="width:170px">Research Topic Title</th><td colspan="3">'+esc(g.topic)+'</td></tr>'+
+      '<tr><th>Domain / Area</th><td>'+esc(g.domain)+'</td><th style="width:150px">Type of Research</th><td>'+esc(g.type)+'</td></tr>'+
+    '</table>'+
+    '<h4>Student-wise Review Evaluation</h4>'+
+    '<table class="rpt-table"><tr><th>Student Name</th><th>Enrolment</th>'+rvHead+'<th>Total</th><th>Status</th></tr>'+
+      rvRows+'</table>'+
+    '<h4>Company / Industry Details</h4>'+
+    '<table class="rpt-table">'+
+      '<tr><th style="width:170px">Company Name</th><td>'+(esc(g.company)||'—')+'</td></tr>'+
+      '<tr><th>Company Letter</th><td>'+(esc(g.letterUrl)||'—')+'</td></tr>'+
+    '</table>'+
+    '<div class="sign"><div>Guide Signature</div><div>Coordinator Signature</div><div>Head of Department</div></div>'+
+  '</div>';
+}
+function printReports(mode, id){
+  var list;
+  if(mode==='one') list = state.groups.filter(function(g){return g.id===id;});
+  else if(mode==='completed') list = state.groups.filter(function(g){return remarkOf(g)==='Completed';});
+  else if(mode==='filtered') list = filteredGroups();
+  else list = state.groups;
+  if(!list.length){ toast('No groups to include'); return; }
+  document.getElementById('printArea').innerHTML = list.map(reportHTML).join('');
+  window.print();
+}
+
+/* ============================================================
+   RENDER ALL
+   ============================================================ */
+function renderAll(){
+  renderKPI();
+  populateFilterDropdowns();
+  renderGroups();
+  renderAllocation();
+  renderReview();
+  renderCompanyTable();
+}
+
+/* ============================================================
+   EVENTS  — includes Enter/Arrow navigation handler
+   ============================================================ */
+function wireEvents(){
+  document.getElementById('fileInput').addEventListener('change', function(ev){
+    var file = ev.target.files[0];
+    if(!file) return;
+    if(typeof XLSX === 'undefined'){
+      setUploadStatus('err','Excel library not loaded.'); ev.target.value=''; return;
+    }
+    setUploadStatus('info','Reading file…');
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+        var ws = wb.Sheets['Review'] || wb.Sheets['Guide Allocation'] || wb.Sheets[wb.SheetNames[0]];
+        if(!ws){ setUploadStatus('err','No sheet found.'); return; }
+        var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        applyImport(rows);
+      }catch(err){
+        console.error(err);
+        setUploadStatus('err','Could not read file: '+err.message);
+      }
+    };
+    reader.onerror = function(){ setUploadStatus('err','Failed to read.'); };
+    reader.readAsArrayBuffer(file);
+    ev.target.value = '';
+  });
+
+  ['fQ','fCourse','fSem','fDomain','fType','fGuide','fStatus','fCompany'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.addEventListener('input', renderGroups);
+    el.addEventListener('change', renderGroups);
+  });
+  ['rvGuide','rvStatus','rvSearch'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.addEventListener('input', renderReview);
+    el.addEventListener('change', renderReview);
+  });
+  ['allocFacFilter','allocCourseFilter','allocSearch'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.addEventListener('input', renderFacultyCards);
+    el.addEventListener('change', renderFacultyCards);
+  });
+  document.getElementById('cmpSearch').addEventListener('input', renderCompanyTable);
+
+  ['groupModal','facultyModal','companyModal'].forEach(function(id){
+    var m = document.getElementById(id);
+    if(m) m.addEventListener('click', function(e){ if(e.target===m) m.classList.remove('show'); });
+  });
+
+  /* ★ ENTER / ARROW KEY NAVIGATION for review mark cells */
+  document.getElementById('reviewRows').addEventListener('keydown', function(e){
+    var t = e.target;
+    if(!t.classList || !t.classList.contains('mini')) return;
+
+    var inputs = Array.prototype.slice.call(document.querySelectorAll('#reviewRows .mini'));
+    var idx = inputs.indexOf(t);
+    if(idx < 0) return;
+
+    var move = 0;
+    if(e.key === 'Enter'){ e.preventDefault(); move = 1; }
+    else if(e.key === 'ArrowDown'){ e.preventDefault(); move = 1; }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); move = -1; }
+    else return;
+
+    var next = idx + move;
+    if(next >= 0 && next < inputs.length){
+      // Blur triggers the current cell's change event → value saved → auto-pushed
+      inputs[next].focus();
+      inputs[next].select();
+    } else if(move > 0){
+      // Last cell — force a save
+      t.blur();
+      saveNow();
+    }
+  });
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', function(){
+  var libWarn = document.getElementById('libWarn');
+  if(typeof XLSX === 'undefined'){
+    libWarn.innerHTML = '<div class="banner err">⚠️ SheetJS not loaded — Excel uses CSV fallback.</div>';
+  } else {
+    libWarn.innerHTML = '<div class="banner info">✅ Ready. Data lives in your Google Sheet · Auto-save is ON.</div>';
+  }
+  try{
+    wireEvents();
+    applySeedLocally();
+    renderAll();
+
+    bootstrap();
+
+    // Safety net: re-push any unsaved changes every 15 s
+    setInterval(function(){
+      if(_dirty && !_savingNow && _serverOnline) flushSave(false);
+    }, 15000);
+
+    // Best-effort save on tab close
+    window.addEventListener('beforeunload', function(){
+      if(_dirty && HAS_GAS){
+        try { google.script.run.saveData(buildPayload()); } catch(e){}
+      }
+    });
+  }catch(err){
+    console.error('Init failed', err);
+    alert('Initialization error: ' + err.message);
+  }
+});
+</script>
+</body>
+</html>
